@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:flutter/foundation.dart';
 import 'package:isar/isar.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
@@ -14,8 +15,15 @@ void watchIsar() => isar.testDatas.watchLazy().listen(
     (_) async => print('Iserted ${await isar.testDatas.count()} testDatas'));
 
 Future<void> readTest() async {
+  return compute(_readTest, await getApplicationDocumentsDirectory());
+}
+
+Future<void> _readTest(Directory dir) async {
+  isar = await Isar.open(
+    schemas: [TestDataSchema],
+    directory: join(dir.path, 'isar_test'),
+  );
   print('Total testDatas: ${await isar.testDatas.count()}');
-  //get all data which is active
   final testDatas =
       await isar.testDatas.filter().isActiveEqualTo(true).findAll();
   print('Active testDatas: ${testDatas.length}');
