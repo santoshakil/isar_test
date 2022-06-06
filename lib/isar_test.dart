@@ -1,4 +1,10 @@
+import 'dart:async';
+import 'dart:io';
+import 'dart:isolate';
+
 import 'package:isar/isar.dart';
+import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'model.dart';
 
@@ -15,21 +21,38 @@ Future<void> readTest() async {
   print('Active testDatas: ${testDatas.length}');
 }
 
-Future<void> writeTest() async {
-  isar.writeTxn((isr) async {
-    isr.testDatas.putAll(
-      List.generate(
-        10000000,
-        (i) => TestData(
-          id: i,
-          name: 'name $i',
-          age: i,
+Future<void> writeTest() async => isar.writeTxn(
+      (isr) async {
+        isr.testDatas.put(TestData(
+          name: 'name ${DateTime.now()}',
+          age: DateTime.now().millisecondsSinceEpoch,
           birthday: DateTime.now(),
-          isActive: i % 2 == 0,
-        ),
-      ),
-      replaceOnConflict: true,
-      saveLinks: true,
+          isActive: true,
+        ));
+      },
     );
-  });
+
+Stream<List<TestData>> isolateTest() async* {
+  final port = ReceivePort();
+  final c = StreamController<List<TestData>>();
+  Isolate.spawn(
+    _isolateTest,
+    [await getApplicationDocumentsDirectory(), port.sendPort],
+  );
+  port.listen((v) => c.add(v));
+  yield* c.stream;
+}
+
+void _isolateTest(List<dynamic> p) async {
+  final dir = p.first as Directory;
+  isar = await Isar.open(
+    schemas: [TestDataSchema],
+    directory: join(dir.path, 'isar_test'),
+  );
+  isar.testDatas
+      .where(sort: Sort.desc)
+      .anyId()
+      .limit(1000)
+      .watch(initialReturn: true)
+      .listen((v) => p.last.send(v));
 }

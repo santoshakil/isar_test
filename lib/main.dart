@@ -33,6 +33,20 @@ class MyApp extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            StreamBuilder<List<TestData>>(
+              stream: isolateTest(),
+              builder: (_, s) {
+                print('${DateTime.now()}: ${s.data?.first.id ?? 0}');
+                if (s.hasData) {
+                  return Text(
+                    'Total testDatas: ${s.data?.first.id ?? 0}',
+                    textAlign: TextAlign.center,
+                  );
+                }
+                return const Text('Loading...');
+              },
+            ),
+            const SizedBox(height: 20),
             ElevatedButton(
               child: const Text('Read'),
               onPressed: () async => await readTest(),
